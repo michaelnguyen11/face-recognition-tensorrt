@@ -4,6 +4,7 @@
 #include <NvInferRuntimeCommon.h>
 
 #include "FaceDetectionYolov5.h"
+#include "FaceAntiSpoofing.h"
 
 static Logger gLogger;
 
@@ -17,10 +18,11 @@ int main(int argc, const char **argv)
 
     float nmsThreshold = 0.4;
     float confidentThreshold = 0.9;
+    float antiSpoofingThreshold = 0.89;
 
     std::unique_ptr<FaceDetectionYolov5> yolov5 = std::make_unique<FaceDetectionYolov5>(modelType, inputName, outputName);
 
-    // Yolov5 parameters
+    /////////////////// Face Detection Yolov5 ///////////////////
 
     // assume the yololayer outputs no more than 1000 boxes that conf >= 0.1
     static const int yoloOutputSize = Yolo::MAX_OUTPUT_BBOX_COUNT * sizeof(Yolo::Detection) / sizeof(float) + 1;
@@ -58,6 +60,9 @@ int main(int argc, const char **argv)
     cudaStream_t stream;
     CUDA_CHECK(cudaStreamCreate(&stream));
 
+    /////////////////// Face Anti Spoofing ///////////////////
+    std::shared_ptr<FaceAntiSpoofing> faceAnfiSpoofing = std::make_shared<FaceAntiSpoofing>();
+
     cv::VideoCapture cap(0);
     if (!cap.isOpened())
     {
@@ -94,8 +99,12 @@ int main(int argc, const char **argv)
         {
             cv::Rect r = yolov5->getRectangle(frame, batchResults[0][j].bbox);
             cv::rectangle(frame, r, cv::Scalar(255, 255, 0), 2);
-            cv::putText(frame, std::to_string((int)batchResults[0][j].conf), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
-            std::cout << "confident: " << batchResults[0][j].conf << std::endl;
+            cv::putText(frame, std::to_string(batchResults[0][j].conf), cv::Point(r.x, r.y), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(255, 255, 0), 2);
+            float antiSpoofConf = faceAnfiSpoofing->detect(frame, r);
+            if (antiSpoofConf < antiSpoofingThreshold)
+                cv::putText(frame, "FAKE Face", cv::Point(r.width + r.x, r.height + r.y), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(255, 255, 0), 2);
+            else
+                cv::putText(frame, "TRUE Face", cv::Point(r.width + r.x, r.height + r.y), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(255, 255, 0), 2);
         }
         cv::imshow("current frame", frame);
         if (cv::waitKey(27) >= 0)

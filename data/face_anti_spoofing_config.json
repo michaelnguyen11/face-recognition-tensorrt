@@ -1,0 +1,25 @@
+{
+    "face_anti_spoofing":
+    [
+        {
+            "name": "model_1",
+            "model_path": "data/model_1",
+            "original_size": false,
+            "scale":2.7,
+            "shift_x":0.0,
+            "shift_y":0.0,
+            "height":80,
+            "width":80
+        },
+        {
+            "name": "model_2",
+            "model_path": "data/model_2",
+            "original_size": false,
+            "scale":4.0,
+            "shift_x":0.0,
+            "shift_y":0.0,
+            "height":80,
+            "width":80
+        }
+    ]
+}
