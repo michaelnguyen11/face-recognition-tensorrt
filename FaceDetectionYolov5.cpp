@@ -172,7 +172,6 @@ void FaceDetectionYolov5::buildEngine(int maxBatchSize)
 
     // Create model to populate the network, then set the outputs and create an engine
     nvinfer1::ICudaEngine *engine = createYoloV5Engine(maxBatchSize, builder, config, nvinfer1::DataType::kFLOAT);
-
     assert(engine != nullptr);
 
     // Serialize the engine

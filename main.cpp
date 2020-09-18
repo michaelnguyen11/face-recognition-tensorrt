@@ -17,7 +17,7 @@ int main(int argc, const char **argv)
     std::string outputName = "prob";
 
     float nmsThreshold = 0.4;
-    float confidentThreshold = 0.9;
+    float confidentThreshold = 0.8;
     float antiSpoofingThreshold = 0.89;
 
     std::unique_ptr<FaceDetectionYolov5> yolov5 = std::make_unique<FaceDetectionYolov5>(modelType, inputName, outputName);
@@ -95,11 +95,11 @@ int main(int argc, const char **argv)
         std::vector<std::vector<Yolo::Detection>> batchResults(1);
         yolov5->nms(batchResults[0], &probability[0], confidentThreshold, nmsThreshold);
 
-        for (size_t j = 0; j < batchResults[0].size(); j++)
+        for (size_t i = 0; i < batchResults[0].size(); i++)
         {
-            cv::Rect r = yolov5->getRectangle(frame, batchResults[0][j].bbox);
+            cv::Rect r = yolov5->getRectangle(frame, batchResults[0][i].bbox);
             cv::rectangle(frame, r, cv::Scalar(255, 255, 0), 2);
-            cv::putText(frame, std::to_string(batchResults[0][j].conf), cv::Point(r.x, r.y), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(255, 255, 0), 2);
+            cv::putText(frame, std::to_string(batchResults[0][i].conf), cv::Point(r.x, r.y), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(255, 255, 0), 2);
             float antiSpoofConf = faceAnfiSpoofing->detect(frame, r);
             if (antiSpoofConf < antiSpoofingThreshold)
                 cv::putText(frame, "FAKE Face", cv::Point(r.width + r.x, r.height + r.y), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(255, 255, 0), 2);

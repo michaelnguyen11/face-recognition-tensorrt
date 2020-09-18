@@ -102,7 +102,7 @@ namespace nvinfer1
     // Return the DataType of the plugin output at the requested index
     DataType YoloLayerPlugin::getOutputDataType(int index, const nvinfer1::DataType* inputTypes, int nbInputs) const
     {
-        return DataType::kFLOAT;
+        return nvinfer1::DataType::kFLOAT;
     }
 
     // Return true if output tensor is broadcast across a batch.

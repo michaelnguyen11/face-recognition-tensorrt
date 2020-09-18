@@ -77,7 +77,7 @@ namespace nvinfer1
 
         bool supportsFormatCombination(int pos, const PluginTensorDesc *inOut, int nbInputs, int nbOutputs) const override
         {
-            return inOut[pos].format == TensorFormat::kLINEAR && inOut[pos].type == DataType::kFLOAT;
+            return inOut[pos].format == TensorFormat::kLINEAR && inOut[pos].type == nvinfer1::DataType::kFLOAT;
         }
 
         const char *getPluginType() const override;
