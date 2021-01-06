@@ -1,16 +1,10 @@
-all: build
+all: fast_build
 
 clean:
 	rm -rf build
 
-build: clean
-	mkdir build
-	cd build/ && cmake .. && make -j4
+fast_build: clean
+	mkdir build && cd build && cmake .. && make -j4
 
-debug: clean
-	mkdir build
-	cd build/ && cmake -DCMAKE_BUILD_TYPE=Debug .. && make -j4
-
-release: clean
-	mkdir build
-	build/ && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j4
+gpu_degalate: clean
+	mkdir build && cd build && cmake -DGPU_DELEGATE=ON .. && make -j4
