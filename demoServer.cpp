@@ -9,6 +9,7 @@
 #include "faceDetection.h"
 #include "faceRecognition.h"
 #include "faceAntiSpoofing.h"
+#include "cppSocket.h"
 
 const int g_numClass = 192;
 std::unordered_map<std::string, std::pair<cv::Mat, std::array<float, g_numClass>>> g_faceDatabase;
@@ -79,6 +80,8 @@ std::pair<std::string, float> predictLabel(std::array<float, g_numClass> &predic
 
 int main(int argc, char **argv)
 {
+    CppSocket server = CppSocket(true);
+
     std::unique_ptr<FaceDetection> fd = std::make_unique<FaceDetection>();
     std::unique_ptr<MobileFaceNet> mfn = std::make_unique<MobileFaceNet>();
     std::unique_ptr<FaceAntiSpoofing> fas = std::make_unique<FaceAntiSpoofing>();
@@ -90,59 +93,50 @@ int main(int argc, char **argv)
     std::vector<int> programTime;
     float antiSpoofingThreshold = 0.89;
 
-    cv::VideoCapture cap(2);
-    if (!cap.isOpened())
-    {
-        std::cerr << "Failed to open camera" << std::endl;
-        return 0;
-    }
-    cap.set(3, 1280);
-    cap.set(4, 720);
-
-    cv::Mat frame;
-
-    while (cap.isOpened())
+    cv::Mat recvFrame, resultFrame;
+    while (server.isClientConnected())
     {
         auto start = std::chrono::system_clock::now();
-
-        cap >> frame;
-        frameCount++;
-        if (frame.empty())
+        int recv = server.receiveImage(recvFrame);
+        if (recv < 0)
         {
-            std::cerr << "Failed to capture frame" << std::endl;
-            break;
+            std::cerr << "Failed to receive image" << std::endl;
+            server.disconnect();
+            continue;
         }
+
+        frameCount++;
 
         std::vector<cv::Rect> bboxes;
         std::vector<float> scores;
-        fd->detectFace(frame, bboxes, scores);
+        fd->detectFace(recvFrame, bboxes, scores);
 
         for (size_t i = 0; i < bboxes.size(); ++i)
         {
             cv::Rect bbox = bboxes[i];
-            bbox = bbox & cv::Rect(0, 0, frame.cols, frame.rows);
+            bbox = bbox & cv::Rect(0, 0, recvFrame.cols, recvFrame.rows);
 
             // Face Anti Spoofing
-            float antiSpoofConf = fas->detect(frame, bbox);
+            float antiSpoofConf = fas->detect(recvFrame, bbox);
             if (antiSpoofConf > antiSpoofingThreshold)
             {
                 // Face Recognition
-                cv::Mat face = frame(bbox);
-                std::array<float, g_numClass> features = mfn->extractFeatures(frame);
+                cv::Mat face = recvFrame(bbox);
+                std::array<float, g_numClass> features = mfn->extractFeatures(recvFrame);
                 std::pair<std::string, float> resultFeatures = predictLabel(features);
                 std::string labelOut = resultFeatures.first;
                 if (!labelOut.empty())
                 {
-                    cv::putText(frame, labelOut, cv::Point(bbox.x, bbox.y * 0.8), cv::FONT_HERSHEY_COMPLEX, .8, cv::Scalar(255, 255, 30));
-                    cv::putText(frame, "similarity: " + std::to_string(resultFeatures.second), cv::Point(bbox.x, bbox.y * 0.7), cv::FONT_HERSHEY_COMPLEX, .8, cv::Scalar(255, 255, 0));
+                    cv::putText(recvFrame, labelOut, cv::Point(bbox.x, bbox.y * 0.8), cv::FONT_HERSHEY_COMPLEX, .8, cv::Scalar(255, 255, 30));
+                    cv::putText(recvFrame, "similarity: " + std::to_string(resultFeatures.second), cv::Point(bbox.x, bbox.y * 0.7), cv::FONT_HERSHEY_COMPLEX, .8, cv::Scalar(255, 255, 0));
                 }
-                cv::putText(frame, "TRUE Face", cv::Point(bbox.width + bbox.x, bbox.height + bbox.y), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(255, 255, 0), 2);
+                cv::putText(recvFrame, "TRUE Face", cv::Point(bbox.width + bbox.x, bbox.height + bbox.y), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(255, 255, 0), 2);
             }
             else
-                cv::putText(frame, "FAKE Face", cv::Point(bbox.width + bbox.x, bbox.height + bbox.y), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(255, 255, 0), 2);
+                cv::putText(recvFrame, "FAKE Face", cv::Point(bbox.width + bbox.x, bbox.height + bbox.y), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(255, 255, 0), 2);
 
-            cv::rectangle(frame, bbox, cv::Scalar(0, 255, 0), 1);
-            cv::putText(frame, std::to_string(scores[i]), cv::Point(bbox.x, bbox.y - 5), cv::FONT_HERSHEY_COMPLEX, .8, cv::Scalar(10, 255, 30));
+            cv::rectangle(recvFrame, bbox, cv::Scalar(0, 255, 0), 1);
+            cv::putText(recvFrame, std::to_string(scores[i]), cv::Point(bbox.x, bbox.y - 5), cv::FONT_HERSHEY_COMPLEX, .8, cv::Scalar(10, 255, 30));
         }
 
         auto end = std::chrono::system_clock::now();
@@ -156,12 +150,16 @@ int main(int argc, char **argv)
             programTime.clear();
         }
 
-        cv::imshow("test", frame);
-        // Press  ESC on keyboard to exit
-        char c = (char)cv::waitKey(30);
-        if (c == 27)
+        resultFrame = recvFrame.clone();
+        int send = server.sendImage(resultFrame);
+        if (send < 0)
+        {
+            std::cerr << "Failed to send image result to client" << std::endl;
             break;
+        }
     }
+
+    server.disconnect();
 
     return 0;
 }
