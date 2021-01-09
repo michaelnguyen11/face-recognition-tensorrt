@@ -128,7 +128,7 @@ int main(int argc, char **argv)
             {
                 // Face Recognition
                 cv::Mat face = frame(bbox);
-                std::array<float, g_numClass> features = mfn->extractFeatures(frame);
+                std::array<float, g_numClass> features = mfn->extractFeatures(face);
                 std::pair<std::string, float> resultFeatures = predictLabel(features);
                 std::string labelOut = resultFeatures.first;
                 if (!labelOut.empty())
